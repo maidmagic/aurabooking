@@ -1,0 +1,24 @@
+{
+  "name": "zapier-aurabooking",
+  "version": "1.0.0",
+  "description": "AuraBooking — AI-powered appointment booking for service businesses",
+  "main": "index.js",
+  "scripts": {
+    "test": "node node_modules/mocha/bin/mocha --recursive --timeout 30000",
+    "lint": "eslint ."
+  },
+  "engines": {
+    "node": ">=18",
+    "npm": ">=9"
+  },
+  "dependencies": {
+    "zapier-platform-core": "^16.0.0"
+  },
+  "devDependencies": {
+    "mocha": "^10.0.0",
+    "should": "^13.2.0"
+  },
+  "zapier": {
+    "convertedByCLIVersion": "16.0.0"
+  }
+}

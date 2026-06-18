@@ -1,0 +1,68 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+
+  --color-background: #FAF8F5;
+  --color-foreground: #1A1A1A;
+  --color-border: #EDE9E3;
+  --color-input: #EDE9E3;
+  --color-ring: #1A1A1A;
+
+  --color-primary: #1A1A1A;
+  --color-primary-foreground: #FAF8F5;
+  --color-primary-hover: #333333;
+
+  --color-secondary: #EDE9E3;
+  --color-secondary-foreground: #1A1A1A;
+
+  --color-muted: #EDE9E3;
+  --color-muted-foreground: #6B6560;
+
+  --color-accent: #7C5CFC;
+  --color-accent-foreground: #FFFFFF;
+
+  --color-destructive: #C44E4E;
+  --color-destructive-foreground: #FAF8F5;
+
+  --color-card: #FFFFFF;
+  --color-card-foreground: #1A1A1A;
+
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #1A1A1A;
+
+  --color-success: #4A7C59;
+  --color-success-foreground: #FFFFFF;
+
+  --color-warning: #D4A04A;
+  --color-warning-foreground: #1A1A1A;
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
