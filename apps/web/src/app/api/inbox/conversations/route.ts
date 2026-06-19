@@ -8,7 +8,7 @@ export async function GET() {
 
   const { data } = await supabase
     .from("conversations")
-    .select("id, channel, customer_name, customer_phone, status, ai_active, created_at, updated_at")
+    .select("id, channel, customer_name, customer_phone, status, ai_active, metadata, created_at, updated_at")
     .eq("user_id", user.id)
     .order("updated_at", { ascending: false });
 
@@ -39,12 +39,13 @@ export async function PATCH(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id, ai_active, status } = await request.json();
+  const { id, ai_active, status, clear_flag } = await request.json();
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
   const updates: Record<string, any> = {};
   if (typeof ai_active === "boolean") updates.ai_active = ai_active;
   if (status) updates.status = status;
+  if (clear_flag) updates.metadata = {};
 
   const { error } = await supabase
     .from("conversations")

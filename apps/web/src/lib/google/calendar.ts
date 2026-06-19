@@ -47,6 +47,31 @@ export async function checkAvailability(
 
   const busy = data.calendars?.["primary"]?.busy ?? [];
 
+  // Also fetch existing appointments and slot holds from our DB
+  const admin = createAdminClient();
+  const [existingAppts, activeHolds] = await Promise.all([
+    admin
+      .from("appointments")
+      .select("start_time, end_time")
+      .eq("user_id", userId)
+      .gte("start_time", dayStart.toISOString())
+      .lte("start_time", dayEnd.toISOString())
+      .neq("status", "cancelled"),
+    admin
+      .from("slot_holds")
+      .select("start_time, end_time")
+      .eq("user_id", userId)
+      .eq("released", false)
+      .gt("expires_at", new Date().toISOString())
+      .gte("start_time", dayStart.toISOString())
+      .lte("start_time", dayEnd.toISOString()),
+  ]);
+
+  const dbBusy: { start: string; end: string }[] = [
+    ...(existingAppts.data ?? []).map((a) => ({ start: a.start_time, end: a.end_time })),
+    ...(activeHolds.data ?? []).map((h) => ({ start: h.start_time, end: h.end_time })),
+  ];
+
   const allSlots: string[] = [];
   const ms = durationMinutes * 60 * 1000;
   let cursor = dayStart.getTime();
@@ -58,6 +83,10 @@ export async function checkAvailability(
       (b) =>
         new Date(b.start!).getTime() < slotEnd &&
         new Date(b.end!).getTime() > cursor
+    ) || dbBusy.some(
+      (b) =>
+        new Date(b.start).getTime() < slotEnd &&
+        new Date(b.end).getTime() > cursor
     );
     if (!conflicts) {
       allSlots.push(new Date(cursor).toISOString());

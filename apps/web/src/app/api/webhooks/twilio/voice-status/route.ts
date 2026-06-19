@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import twilio from "twilio";
-
-function getTwilioClient() {
-  return twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!);
-}
+import { sendSMS, optOutFooter } from "@/lib/sms/send";
 
 export async function POST(request: Request) {
   const formData = await request.formData();
@@ -69,17 +65,13 @@ export async function POST(request: Request) {
     .update({ updated_at: new Date().toISOString() })
     .eq("id", conversation!.id);
 
-  // Send SMS
-  try {
-    const client = getTwilioClient();
-    await client.messages.create({
-      body: missedCallMessage,
-      from: to,
-      to: from,
-    });
-  } catch (err) {
-    console.error("Failed to send missed call SMS:", err);
-  }
+  await sendSMS({
+    to: from,
+    body: missedCallMessage + optOutFooter(),
+    type: "RESCUE",
+  });
 
   return NextResponse.json({});
 }
+
+export const runtime = "nodejs";

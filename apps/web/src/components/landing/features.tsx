@@ -1,66 +1,48 @@
-import { Bot, MessageSquare, Calendar, Bell, Target, Globe } from "lucide-react";
-
 const features = [
   {
-    title: "Virtual Receptionist",
-    description: "AI that answers SMS, qualifies leads, and books appointments 24/7.",
-    icon: Bot,
+    title: "Zero App Friction",
+    desc: "60% of booking attempts happen outside business hours. Clients text a number, get an instant conversational response, and secure a slot — no app download, no login, no waiting.",
+    span: "col-span-1 md:col-span-2",
   },
   {
-    title: "Business Messenger",
-    description: "In-app messaging between your staff and customers in one place.",
-    icon: MessageSquare,
+    title: "Contextual Memory",
+    desc: "Returning customers are greeted by name with their full history — last service, preferred staff member, vaccination records. No duplicate profiles, no awkward repeats.",
+    span: "col-span-1",
   },
   {
-    title: "AI Scheduling",
-    description: "Real-time calendar sync reads availability and writes bookings instantly.",
-    icon: Calendar,
+    title: "Flawless Calendar Sync",
+    desc: "Your live calendar is read and written mid-conversation. No caching delays, no double-booking, no wasted buffer time. Every confirmed slot is instantly locked.",
+    span: "col-span-1",
   },
   {
-    title: "Automated Reminders",
-    description: "SMS appointment reminders reduce no-shows by up to 40%.",
-    icon: Bell,
-  },
-  {
-    title: "Lead Engage",
-    description: "AI qualification pipeline that nurtures leads until they're ready to book.",
-    icon: Target,
-  },
-  {
-    title: "Web Chat",
-    description: "Embeddable chat widget that captures website visitors with AI conversations.",
-    icon: Globe,
+    title: "Graceful Rescheduling",
+    desc: "Automated text reminders 24-48 hours out. Reply RESCHEDULE to pick a new time. No-shows drop, slots reopen, and your calendar stays full without a single staff intervention.",
+    span: "col-span-1 md:col-span-2",
   },
 ];
 
 export function Features() {
   return (
-    <section className="py-20 px-6 bg-card">
+    <section className="py-32 bg-white px-6">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-semibold text-foreground mb-3">
-            Everything You Need to Grow
-          </h2>
-          <p className="text-muted-foreground max-w-lg mx-auto">
-            Six integrated features that work together to eliminate missed revenue.
-          </p>
-        </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature) => {
-            const Icon = feature.icon;
-            return (
-              <div
-                key={feature.title}
-                className="p-6 rounded-xl border border-border bg-background hover:border-[#D8D2CB] transition-colors"
-              >
-                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center mb-4">
-                  <Icon className="h-5 w-5 text-primary-foreground" />
-                </div>
-                <h3 className="font-semibold text-foreground mb-2">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
-              </div>
-            );
-          })}
+        <h2 className="font-editorial text-4xl text-center mb-20">
+          The four things that actually matter.
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {features.map((feat) => (
+            <div
+              key={feat.title}
+              className={`p-10 rounded-3xl bg-[#FAFAFA] border border-slate-100 hover:shadow-lg transition-shadow duration-500 ${feat.span}`}
+            >
+              <h3 className="text-xl font-medium tracking-tight mb-4">
+                {feat.title}
+              </h3>
+              <p className="text-slate-500 font-light leading-relaxed">
+                {feat.desc}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </section>

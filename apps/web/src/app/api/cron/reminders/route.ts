@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import twilio from "twilio";
-
-function getTwilioClient() {
-  return twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!);
-}
+import { sendSMS } from "@/lib/sms/send";
+import { chunkedMap, countFulfilled } from "@/lib/batch";
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -37,7 +34,8 @@ export async function GET(request: Request) {
     .not("customer_phone", "is", null)
     .not("customer_phone", "eq", "");
 
-  let sent = 0;
+  // Pre-filter: build payloads for eligible appointments
+  const tasks: { appointmentId: string; userId: string; to: string; body: string }[] = [];
 
   for (const apt of (appointments ?? [])) {
     const { data: existing } = await admin
@@ -76,27 +74,24 @@ export async function GET(request: Request) {
       .single();
     if (!integration?.twilio_phone) continue;
 
-    try {
-      const client = getTwilioClient();
-      await client.messages.create({
-        body: message,
-        from: integration.twilio_phone,
-        to: apt.customer_phone,
-      });
-
-      await admin.from("reminders").insert({
-        appointment_id: apt.id,
-        user_id: apt.user_id,
-        status: "sent",
-      });
-
-      sent++;
-    } catch (err) {
-      console.error(`Failed to send reminder for appointment ${apt.id}:`, err);
-    }
+    tasks.push({ appointmentId: apt.id, userId: apt.user_id, to: apt.customer_phone, body: message });
   }
 
-  return NextResponse.json({ sent });
+  // Batch-send in chunks of 25 with concurrent Twilio dispatch
+  const results = await chunkedMap(tasks, async (task) => {
+    const result = await sendSMS({ to: task.to, body: task.body, type: "RESCUE" });
+    if (result.success) {
+      await admin.from("reminders").insert({
+        appointment_id: task.appointmentId,
+        user_id: task.userId,
+        status: "sent",
+      });
+    }
+    return result.success;
+  });
+
+  return NextResponse.json({ sent: countFulfilled(results), total: tasks.length });
 }
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;

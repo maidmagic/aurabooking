@@ -1,0 +1,26 @@
+-- Migration: Seed admin user with super_admin role metadata
+-- Run this AFTER registering your admin email via /auth/register
+-- Then use /api/admin/setup to grant super_admin role metadata
+
+-- ALTERNATIVE: Direct SQL seed (use only if you cannot reach the setup API)
+-- Replace the email and password before running:
+--
+-- INSERT INTO auth.users (
+--   instance_id, id, aud, role, email,
+--   encrypted_password, email_confirmed_at,
+--   raw_app_meta_data, raw_user_meta_data,
+--   is_super_admin, created_at, updated_at
+-- ) VALUES (
+--   '00000000-0000-0000-0000-000000000000',
+--   gen_random_uuid(),
+--   'authenticated',
+--   'authenticated',
+--   'your-admin@example.com',
+--   crypt('your-strong-password', gen_salt('bf')),
+--   NOW(),
+--   '{"provider":"email","providers":["email"]}',
+--   '{"role":"super_admin"}',
+--   false,
+--   NOW(),
+--   NOW()
+-- );

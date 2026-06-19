@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import twilio from "twilio";
-
-function getTwilioClient() {
-  return twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!);
-}
+import { sendSMS } from "@/lib/sms/send";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization") || "";
@@ -35,33 +31,21 @@ export async function GET(request: Request) {
 
     const serviceName = (appointment as any).services?.name ?? "appointment";
 
-    const { data: integration } = await admin
-      .from("integrations")
-      .select("twilio_phone")
-      .eq("user_id", payment.user_id)
-      .eq("provider", "twilio")
-      .single();
-
-    if (!integration?.twilio_phone) continue;
-
     const message = `Hi ${appointment.customer_name}, we noticed you didn't complete your deposit for your ${serviceName} appointment. Can we help? Reply to this message or call us and we'll be happy to assist.`;
 
-    try {
-      const client = getTwilioClient();
-      await client.messages.create({
-        body: message,
-        from: integration.twilio_phone,
-        to: appointment.customer_phone,
-      });
+    const result = await sendSMS({
+      to: appointment.customer_phone,
+      body: message,
+      type: "RESCUE",
+    });
 
+    if (result.success) {
       await admin
         .from("payments")
         .update({ followed_up: true })
         .eq("id", payment.id);
 
       sent++;
-    } catch (err) {
-      console.error(`Failed to send deposit follow-up for payment ${payment.id}:`, err);
     }
   }
 
@@ -69,3 +53,4 @@ export async function GET(request: Request) {
 }
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;

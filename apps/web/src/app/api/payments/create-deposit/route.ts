@@ -48,24 +48,29 @@ export async function POST(request: Request) {
     .eq("provider", "twilio")
     .single();
 
-  const checkoutSession = await getStripe().checkout.sessions.create({
-    mode: "payment",
-    line_items: [{
-      price_data: {
-        currency: "usd",
-        product_data: { name: `${serviceName} Deposit` },
-        unit_amount: depositAmount,
+  const checkoutSession = await getStripe().checkout.sessions.create(
+    {
+      mode: "payment",
+      automatic_tax: { enabled: true },
+      line_items: [{
+        price_data: {
+          currency: "usd",
+          product_data: { name: `${serviceName} Deposit` },
+          unit_amount: depositAmount,
+        },
+        quantity: 1,
+      }],
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/appointments?paid=${appointment_id}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/appointments`,
+      metadata: {
+        appointment_id,
+        user_id: appointment.user_id,
+        type: "deposit",
+        service_name: serviceName,
       },
-      quantity: 1,
-    }],
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/appointments?paid=${appointment_id}`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/appointments`,
-    metadata: {
-      appointment_id,
-      user_id: appointment.user_id,
-      type: "deposit",
     },
-  });
+    { idempotencyKey: `deposit_${appointment_id}` }
+  );
 
   const holdExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 

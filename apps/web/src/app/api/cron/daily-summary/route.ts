@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import twilio from "twilio";
+import { chunkedMap, countFulfilled } from "@/lib/batch";
 
 function getTwilioClient() {
   return twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!);
@@ -25,6 +26,9 @@ export async function GET(request: Request) {
   const { data: users } = await admin.from("users").select("id, phone");
 
   let reportsCreated = 0;
+
+  // Phase 1: build all reports (sequential DB work)
+  const smsTasks: { user: any; reportData: any; integration: any }[] = [];
 
   for (const user of (users ?? [])) {
     const { data: userConvs } = await admin
@@ -101,42 +105,49 @@ export async function GET(request: Request) {
       await admin.from("daily_reports").insert({ user_id: user.id, report_date: reportDate, data: reportData });
     }
 
+    reportsCreated++;
+
+    // Collect SMS tasks for batch send
     if (user.phone) {
-      try {
-        const { data: integration } = await admin
-          .from("integrations")
-          .select("twilio_phone")
-          .eq("user_id", user.id)
-          .eq("provider", "twilio")
-          .single();
+      const { data: integration } = await admin
+        .from("integrations")
+        .select("twilio_phone")
+        .eq("user_id", user.id)
+        .eq("provider", "twilio")
+        .single();
 
-        if (integration?.twilio_phone) {
-          const client = getTwilioClient();
-          const summary = `AuraBooking Daily Summary (${reportDate})\n` +
-            `New Conversations: ${reportData.new_conversations}\n` +
-            `Bookings: ${reportData.booked_appointments}\n` +
-            `Deposits Collected: ${reportData.deposits_collected} ($${(reportData.deposit_revenue / 100).toFixed(2)})\n` +
-            `Pending Deposits: ${reportData.pending_deposits}\n` +
-            `Reminders Sent: ${reportData.reminders_sent}\n` +
-            `Missed Calls: ${reportData.missed_calls}`;
-
-          await client.messages.create({
-            body: summary,
-            from: integration.twilio_phone,
-            to: user.phone,
-          });
-
-          await admin.from("daily_reports").update({ sms_sent: true }).eq("user_id", user.id).eq("report_date", reportDate);
-        }
-      } catch (err) {
-        console.error(`Daily summary SMS failed for user ${user.id}:`, err);
+      if (integration?.twilio_phone) {
+        smsTasks.push({ user, reportData, integration });
       }
     }
-
-    reportsCreated++;
   }
 
-  return NextResponse.json({ reports_created: reportsCreated });
+  // Phase 2: batch-send summary SMS in chunks of 25
+  if (smsTasks.length > 0) {
+    const results = await chunkedMap(smsTasks, async ({ user, reportData, integration }) => {
+      const client = getTwilioClient();
+      const summary = `AuraBooking Daily Summary (${reportDate})\n` +
+        `New Conversations: ${reportData.new_conversations}\n` +
+        `Bookings: ${reportData.booked_appointments}\n` +
+        `Deposits Collected: ${reportData.deposits_collected} ($${(reportData.deposit_revenue / 100).toFixed(2)})\n` +
+        `Pending Deposits: ${reportData.pending_deposits}\n` +
+        `Reminders Sent: ${reportData.reminders_sent}\n` +
+        `Missed Calls: ${reportData.missed_calls}`;
+
+      await client.messages.create({
+        body: summary,
+        from: integration.twilio_phone,
+        to: user.phone,
+      });
+
+      await admin.from("daily_reports").update({ sms_sent: true }).eq("user_id", user.id).eq("report_date", reportDate);
+    });
+
+    console.log(`Daily summary: ${countFulfilled(results)}/${smsTasks.length} SMS sent`);
+  }
+
+  return NextResponse.json({ reports_created: reportsCreated, sms_sent: smsTasks.length });
 }
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;

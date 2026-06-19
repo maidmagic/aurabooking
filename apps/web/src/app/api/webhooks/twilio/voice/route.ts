@@ -42,3 +42,5 @@ export async function POST(request: Request) {
     headers: { "Content-Type": "text/xml" },
   });
 }
+
+export const runtime = "nodejs";

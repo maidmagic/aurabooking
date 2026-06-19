@@ -1,0 +1,18 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npx turbo build --filter=web",
+  "installCommand": "npm install",
+  "outputDirectory": "apps/web/.next",
+  "crons": [
+    { "path": "/api/cron/reminders", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/release-holds", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/deposit-followup", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/review-queue", "schedule": "0 10 * * *" },
+    { "path": "/api/cron/review-followup", "schedule": "0 14 * * *" },
+    { "path": "/api/cron/missed-call-followup", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/weekly-recap", "schedule": "0 8 * * 1" },
+    { "path": "/api/cron/calendar-sync", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/waitlist-filler", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/recall-notifications", "schedule": "0 9 * * *" }
+  ]
+}

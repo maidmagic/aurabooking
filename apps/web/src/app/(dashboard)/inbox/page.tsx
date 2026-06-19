@@ -26,6 +26,7 @@ interface Conversation {
   customer_phone: string | null;
   status: string;
   ai_active: boolean;
+  metadata: Record<string, any> | null;
   created_at: string;
   updated_at: string;
   last_message: string | null;
@@ -363,10 +364,17 @@ export default function InboxPage() {
                     <span className="text-[11px] text-muted-foreground whitespace-nowrap">
                       {timeAgo(conv.last_message_at ?? conv.updated_at)}
                     </span>
-                    <Badge variant="outline" className="text-[10px] h-4 px-1.5 gap-0.5">
-                      {channelIcon(conv.channel)}
-                      {channelLabel(conv.channel)}
-                    </Badge>
+                    <div className="flex items-center gap-1">
+                      {conv.metadata?.needs_human && (
+                        <Badge variant="destructive" className="text-[10px] h-4 px-1.5">
+                          Needs Help
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-[10px] h-4 px-1.5 gap-0.5">
+                        {channelIcon(conv.channel)}
+                        {channelLabel(conv.channel)}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
               </button>

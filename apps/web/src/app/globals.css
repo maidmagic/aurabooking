@@ -6,41 +6,41 @@
 
 @theme inline {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
   --font-mono: "Geist Mono", ui-monospace, monospace;
 
-  --color-background: #FAF8F5;
-  --color-foreground: #1A1A1A;
-  --color-border: #EDE9E3;
-  --color-input: #EDE9E3;
-  --color-ring: #1A1A1A;
+  --color-background: #FAFAFA;
+  --color-foreground: #000000;
+  --color-border: #E8E6E1;
+  --color-input: #E8E6E1;
+  --color-ring: #000000;
 
-  --color-primary: #1A1A1A;
-  --color-primary-foreground: #FAF8F5;
-  --color-primary-hover: #333333;
+  --color-primary: #000000;
+  --color-primary-foreground: #FFFFFF;
 
-  --color-secondary: #EDE9E3;
-  --color-secondary-foreground: #1A1A1A;
+  --color-secondary: #F5F4F0;
+  --color-secondary-foreground: #000000;
 
-  --color-muted: #EDE9E3;
-  --color-muted-foreground: #6B6560;
+  --color-muted: #F5F4F0;
+  --color-muted-foreground: #8A8682;
 
-  --color-accent: #7C5CFC;
+  --color-accent: #000000;
   --color-accent-foreground: #FFFFFF;
 
   --color-destructive: #C44E4E;
-  --color-destructive-foreground: #FAF8F5;
+  --color-destructive-foreground: #FAFAFA;
 
   --color-card: #FFFFFF;
-  --color-card-foreground: #1A1A1A;
+  --color-card-foreground: #000000;
 
   --color-popover: #FFFFFF;
-  --color-popover-foreground: #1A1A1A;
+  --color-popover-foreground: #000000;
 
   --color-success: #4A7C59;
   --color-success-foreground: #FFFFFF;
 
   --color-warning: #D4A04A;
-  --color-warning-foreground: #1A1A1A;
+  --color-warning-foreground: #000000;
 
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
@@ -54,6 +54,15 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .font-editorial {
+    font-family: "Playfair Display", ui-serif, Georgia, serif;
+  }
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-md border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)];
   }
 }
 

@@ -1,19 +1,21 @@
 import { Navbar } from "@/components/landing/navbar";
 import { Hero } from "@/components/landing/hero";
+import { HowItWorks } from "@/components/landing/how-it-works";
 import { Features } from "@/components/landing/features";
-import { Integrations } from "@/components/landing/integrations";
-import { CTA } from "@/components/landing/cta";
-import { Footer } from "@/components/landing/footer";
+import { Offers } from "@/components/landing/offers";
+import { SocialProof } from "@/components/landing/social-proof";
+import { DemoFooter } from "@/components/landing/demo-footer";
 
 export default function LandingPage() {
   return (
-    <div className="bg-background">
+    <div className="bg-[#FAFAFA]">
       <Navbar />
       <Hero />
+      <HowItWorks />
       <Features />
-      <Integrations />
-      <CTA />
-      <Footer />
+      <Offers />
+      <SocialProof />
+      <DemoFooter />
     </div>
   );
 }

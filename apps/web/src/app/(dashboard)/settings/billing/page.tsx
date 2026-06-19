@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, CreditCard } from "lucide-react";
+import { Loader2, CreditCard, Check } from "lucide-react";
 
 interface Subscription {
   id: string;
@@ -13,6 +13,23 @@ interface Subscription {
   status: string;
   current_period_end: string;
 }
+
+const PLANS = [
+  {
+    name: "Starter",
+    price: "$49",
+    desc: "For solo operators",
+    features: ["100 conversations/mo", "AI receptionist", "Calendar sync", "SMS reminders", "Text-based booking"],
+    popular: false,
+  },
+  {
+    name: "Growth",
+    price: "$99",
+    desc: "For multi-staff locations",
+    features: ["Unlimited conversations", "Staff routing", "Advanced analytics", "Priority support", "White-glove onboarding"],
+    popular: true,
+  },
+];
 
 const PAYMENT_HISTORY = [
   { date: "May 15, 2026", amount: "$29.00", method: "Visa •••• 4242", status: "paid" },
@@ -23,6 +40,7 @@ const PAYMENT_HISTORY = [
 export default function BillingSettingsPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings/billing")
@@ -33,6 +51,19 @@ export default function BillingSettingsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  async function openPortal() {
+    setPortalLoading(true);
+    try {
+      const res = await fetch("/api/settings/billing/portal", { method: "POST" });
+      const data = await res.json();
+      if (data.url) {
+        window.open(data.url, "_blank");
+      }
+    } finally {
+      setPortalLoading(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48">
@@ -41,7 +72,7 @@ export default function BillingSettingsPage() {
     );
   }
 
-  const planLabel = subscription?.plan ?? "Free";
+  const planLabel = subscription?.plan ?? "Trial";
   const statusLabel = subscription?.status ?? "active";
   const periodEnd = subscription?.current_period_end
     ? new Date(subscription.current_period_end).toLocaleDateString("en-US", {
@@ -50,12 +81,44 @@ export default function BillingSettingsPage() {
     : null;
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-3xl space-y-6">
       <div>
         <h2 className="text-2xl font-semibold text-foreground">Billing</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Manage your subscription and payment history.
         </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {PLANS.map((plan) => {
+          const isCurrent = planLabel.toLowerCase() === plan.name.toLowerCase();
+          return (
+            <Card key={plan.name} className={isCurrent ? "ring-2 ring-black" : ""}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{plan.name}</CardTitle>
+                  {plan.popular && <Badge variant="default">Popular</Badge>}
+                  {isCurrent && <Badge variant="success">Current</Badge>}
+                </div>
+                <CardDescription>{plan.desc}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <span className="text-3xl font-semibold">{plan.price}</span>
+                  <span className="text-sm text-muted-foreground">/mo</span>
+                </div>
+                <ul className="space-y-2">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-center gap-2 text-sm">
+                      <Check className="h-4 w-4 text-green-600 shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <Card>
@@ -90,7 +153,8 @@ export default function BillingSettingsPage() {
               <Separator />
             </>
           )}
-          <Button variant="outline" disabled>
+          <Button variant="outline" onClick={openPortal} disabled={portalLoading}>
+            {portalLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Manage Subscription
           </Button>
         </CardContent>

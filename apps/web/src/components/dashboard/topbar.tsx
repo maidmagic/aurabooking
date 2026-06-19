@@ -1,13 +1,27 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { FeedbackDialog } from "@/components/dashboard/feedback-dialog";
+
+const pageTitles: Record<string, string> = {
+  "/dashboard": "Overview",
+  "/inbox": "Conversations",
+  "/appointments": "Calendar",
+  "/clients": "Clients",
+  "/campaigns": "Campaigns",
+  "/settings": "Settings",
+};
 
 export function Topbar() {
+  const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+
+  const title = Object.entries(pageTitles).find(([path]) =>
+    pathname.startsWith(path)
+  )?.[1] ?? "Dashboard";
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -16,14 +30,25 @@ export function Topbar() {
   };
 
   return (
-    <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
-      <div className="flex items-center gap-3 lg:hidden">
-        <h1 className="text-lg font-semibold text-foreground">AuraBooking</h1>
+    <header className="h-16 flex-shrink-0 bg-white border-b border-slate-100 flex items-center justify-between px-8">
+      <div className="flex items-center gap-3 md:hidden">
+        <span className="font-editorial text-lg font-semibold">AuraBooking.</span>
       </div>
-      <div className="flex items-center gap-4 ml-auto">
-        <Button variant="ghost" size="icon" onClick={handleSignOut}>
-          <LogOut className="h-5 w-5 text-muted-foreground" />
-        </Button>
+      <h1 className="text-lg font-medium tracking-tight text-slate-900">
+        {title}
+      </h1>
+
+      <div className="flex items-center gap-4">
+        <FeedbackDialog />
+        <button className="text-sm font-medium text-slate-500 hover:text-black transition-colors">
+          Support
+        </button>
+        <button
+          onClick={handleSignOut}
+          className="text-sm font-medium text-slate-500 hover:text-black transition-colors"
+        >
+          Sign out
+        </button>
       </div>
     </header>
   );

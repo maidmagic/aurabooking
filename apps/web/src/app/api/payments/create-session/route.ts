@@ -63,13 +63,14 @@ export async function POST(request: Request) {
       },
       quantity: 1,
     }],
+    automatic_tax: { enabled: true },
     success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/appointments?paid=${appointment_id}`,
     cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/appointments`,
     metadata: {
       appointment_id,
       user_id: user.id,
     },
-  });
+  }, { idempotencyKey: `payment_${appointment_id}` });
 
   const { data: payment } = await admin
     .from("payments")

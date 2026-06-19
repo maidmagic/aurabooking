@@ -1,4 +1,4 @@
-import { CreditCard, Users, MapPin, Bell, Zap } from "lucide-react";
+import { CreditCard, Users, MapPin, Bell, Zap, Monitor, Star } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -32,6 +32,18 @@ const SETTINGS_LINKS = [
     icon: Bell,
     title: "Reminders",
     description: "Configure appointment reminder settings.",
+  },
+  {
+    href: "/settings/pms",
+    icon: Monitor,
+    title: "PMS / EHR",
+    description: "Connect your practice management software for real-time booking.",
+  },
+  {
+    href: "/settings/reviews",
+    icon: Star,
+    title: "Reviews",
+    description: "Automate Google Review requests after appointments.",
   },
 ];
 
