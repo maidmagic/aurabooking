@@ -26,17 +26,26 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
-  // Check if seed data already exists for this user
+  // Support ?reset=true to clear existing data first
+  const { searchParams } = new URL(request.url);
+  const reset = searchParams.get("reset") === "true";
+
   const { count: existingClients } = await admin
     .from("customer_profiles")
     .select("*", { count: "exact", head: true })
     .eq("user_id", user.id);
 
   if (existingClients && existingClients > 0) {
-    return NextResponse.json({
-      message: "Seed data already exists",
-      clients: existingClients,
-    });
+    if (!reset) {
+      return NextResponse.json({
+        message: "Seed data already exists. Use ?reset=true to re-seed.",
+        clients: existingClients,
+      });
+    }
+    // Clear existing seed data
+    await admin.from("appointments").delete().eq("user_id", user.id);
+    await admin.from("campaigns").delete().eq("user_id", user.id);
+    await admin.from("customer_profiles").delete().eq("user_id", user.id);
   }
 
   const now = new Date();
