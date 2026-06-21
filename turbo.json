@@ -9,7 +9,15 @@
         "NEXT_PUBLIC_SUPABASE_URL",
         "NEXT_PUBLIC_SUPABASE_ANON_KEY",
         "NEXT_PUBLIC_APP_URL",
-        "ADMIN_EMAIL"
+        "ADMIN_EMAIL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "CRON_SECRET",
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        "OPENROUTER_API_KEY",
+        "TWILIO_ACCOUNT_SID",
+        "TWILIO_AUTH_TOKEN",
+        "TWILIO_MESSAGING_SERVICE_SID"
       ]
     },
     "lint": {},
