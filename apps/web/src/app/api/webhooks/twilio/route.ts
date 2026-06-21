@@ -136,6 +136,56 @@ export async function POST(request: Request) {
     return NextResponse.json({ ignored: true });
   }
 
+  // ── Y/N reminder reply handling ──
+  const yMatch = /^y(es)?$/i.test(strippedBody);
+  const nMatch = /^n(o)?$/i.test(strippedBody);
+
+  if (yMatch || nMatch) {
+    const { data: recentReminder } = await admin
+      .from("reminders")
+      .select("id, appointment_id")
+      .eq("user_id", userId)
+      .eq("status", "sent")
+      .order("sent_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (recentReminder) {
+      const { data: apt } = await admin
+        .from("appointments")
+        .select("start_time, services(name)")
+        .eq("id", recentReminder.appointment_id)
+        .single();
+
+      if (yMatch) {
+        await admin.from("reminders").update({ status: "confirmed" }).eq("id", recentReminder.id);
+        try {
+          const client = getTwilioClient();
+          const d = new Date(apt!.start_time);
+          const timeStr = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
+          await client.messages.create({
+            body: `Thank you for confirming! We look forward to seeing you on ${timeStr}.`,
+            from: to,
+            to: from,
+          });
+        } catch {}
+        return NextResponse.json({ reminder_reply: "confirmed" });
+      } else {
+        await admin.from("reminders").update({ status: "cancelled" }).eq("id", recentReminder.id);
+        await admin.from("appointments").update({ status: "cancelled" }).eq("id", recentReminder.appointment_id);
+        try {
+          const client = getTwilioClient();
+          await client.messages.create({
+            body: `Your appointment has been cancelled. You can always rebook by texting us.`,
+            from: to,
+            to: from,
+          });
+        } catch {}
+        return NextResponse.json({ reminder_reply: "cancelled" });
+      }
+    }
+  }
+
   // ── End CTIA — normal flow ──
 
   let { data: conversation } = await admin

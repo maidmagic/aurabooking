@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { AppointmentList } from "@/components/appointments/appointment-list";
 
 interface Appointment {
@@ -14,16 +14,12 @@ interface Appointment {
   services?: { name: string } | null;
 }
 
+interface AppointmentWithDuration extends Appointment {
+  durationMinutes: number;
+}
+
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-function useAppointments() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  useEffect(() => {
-    fetch("/api/appointments").then((r) => r.json()).then(setAppointments);
-  }, []);
-  return { appointments, setAppointments };
-}
 
 function getDayAppointments(appointments: Appointment[], date: Date) {
   return appointments.filter((a) => {
@@ -32,12 +28,14 @@ function getDayAppointments(appointments: Appointment[], date: Date) {
   });
 }
 
-function CalendarGrid({ appointments, onSelectDay, selectedDate }: {
+function CalendarGrid({ appointments, onSelectDay, selectedDate, onDropAppointment }: {
   appointments: Appointment[];
   onSelectDay: (d: Date) => void;
   selectedDate: Date | null;
+  onDropAppointment: (appointmentId: string, newDate: Date) => void;
 }) {
   const [monthOffset, setMonthOffset] = useState(0);
+  const [dragOverDay, setDragOverDay] = useState<string | null>(null);
   const now = new Date();
   const base = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
   const year = base.getFullYear();
@@ -45,14 +43,34 @@ function CalendarGrid({ appointments, onSelectDay, selectedDate }: {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDay = new Date(year, month, 1).getDay();
   const daysInPrev = new Date(year, month, 0).getDate();
-
   const today = new Date();
 
-  const cells: ({ day: number; currentMonth: boolean } | null)[] = [];
-  for (let i = firstDay - 1; i >= 0; i--) cells.push({ day: daysInPrev - i, currentMonth: false });
-  for (let i = 1; i <= daysInMonth; i++) cells.push({ day: i, currentMonth: true });
+  const cells: ({ day: number; currentMonth: boolean; date: Date } | null)[] = [];
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const d = new Date(year, month - 1, daysInPrev - i);
+    cells.push({ day: daysInPrev - i, currentMonth: false, date: d });
+  }
+  for (let i = 1; i <= daysInMonth; i++) {
+    cells.push({ day: i, currentMonth: true, date: new Date(year, month, i) });
+  }
   const remaining = 42 - cells.length;
-  for (let i = 1; i <= remaining; i++) cells.push({ day: i, currentMonth: false });
+  for (let i = 1; i <= remaining; i++) {
+    cells.push({ day: i, currentMonth: false, date: new Date(year, month + 1, i) });
+  }
+
+  const handleDragOver = (e: React.DragEvent, dateKey: string) => {
+    e.preventDefault();
+    setDragOverDay(dateKey);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetDate: Date) => {
+    e.preventDefault();
+    setDragOverDay(null);
+    const appointmentId = e.dataTransfer.getData("text/appointment-id");
+    if (appointmentId) {
+      onDropAppointment(appointmentId, targetDate);
+    }
+  };
 
   return (
     <div>
@@ -67,30 +85,51 @@ function CalendarGrid({ appointments, onSelectDay, selectedDate }: {
         ))}
         {cells.map((cell, i) => {
           if (!cell) return <div key={i} />;
-          const dateObj = new Date(year, month, cell.day);
-          const isToday = cell.currentMonth && dateObj.toDateString() === today.toDateString();
-          const isSelected = selectedDate && dateObj.toDateString() === selectedDate.toDateString();
-          const dayApts = getDayAppointments(appointments, dateObj);
+          const dateKey = cell.date.toISOString();
+          const isToday = cell.date.toDateString() === today.toDateString();
+          const isSelected = selectedDate && cell.date.toDateString() === selectedDate.toDateString();
+          const dayApts = getDayAppointments(appointments, cell.date);
+          const isDragOver = dragOverDay === dateKey;
           return (
-            <button
+            <div
               key={i}
-              onClick={() => cell.currentMonth && onSelectDay(dateObj)}
-              className={`bg-white min-h-[56px] p-1.5 text-left transition-colors flex flex-col ${
+              onDragOver={(e) => handleDragOver(e, dateKey)}
+              onDragLeave={() => setDragOverDay(null)}
+              onDrop={(e) => handleDrop(e, cell.date)}
+              onClick={() => cell.currentMonth && onSelectDay(cell.date)}
+              className={`bg-white min-h-[80px] p-1.5 transition-colors flex flex-col ${
                 !cell.currentMonth ? "opacity-30" : "hover:bg-slate-50 cursor-pointer"
-              } ${isSelected ? "ring-2 ring-inset ring-black" : ""}`}
+              } ${isSelected ? "ring-2 ring-inset ring-black" : ""} ${isDragOver ? "bg-slate-100" : ""}`}
             >
-              <span className={`text-xs font-medium ${isToday ? "bg-black text-white w-5 h-5 rounded-full flex items-center justify-center" : "text-slate-700"}`}>
+              <span className={`text-xs font-medium mb-1 w-5 h-5 flex items-center justify-center ${
+                isToday ? "bg-black text-white rounded-full" : "text-slate-700"
+              }`}>
                 {cell.day}
               </span>
-              {dayApts.length > 0 && (
-                <div className="mt-auto flex gap-0.5">
-                  {dayApts.slice(0, 3).map((apt) => (
-                    <span key={apt.id} className={`w-1.5 h-1.5 rounded-full ${apt.status === "cancelled" ? "bg-red-300" : apt.status === "completed" ? "bg-emerald-400" : "bg-slate-400"}`} />
-                  ))}
-                  {dayApts.length > 3 && <span className="text-[8px] text-slate-400">+{dayApts.length - 3}</span>}
-                </div>
-              )}
-            </button>
+              <div className="flex-1 space-y-0.5 overflow-hidden">
+                {dayApts.slice(0, 3).map((apt) => (
+                  <div
+                    key={apt.id}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("text/appointment-id", apt.id);
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
+                    className={`text-[9px] px-1 py-0.5 rounded truncate font-medium cursor-grab active:cursor-grabbing ${
+                      apt.status === "cancelled" ? "bg-red-50 text-red-500 line-through" :
+                      apt.status === "completed" ? "bg-emerald-50 text-emerald-600" :
+                      "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}
+                  >
+                    {new Date(apt.start_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                    {" "}{apt.customer_name?.split(" ")[0] ?? "?"}
+                  </div>
+                ))}
+                {dayApts.length > 3 && (
+                  <span className="text-[8px] text-slate-400 ml-1">+{dayApts.length - 3} more</span>
+                )}
+              </div>
+            </div>
           );
         })}
       </div>
@@ -99,9 +138,49 @@ function CalendarGrid({ appointments, onSelectDay, selectedDate }: {
 }
 
 export default function AppointmentsPage() {
-  const { appointments, setAppointments } = useAppointments();
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [view, setView] = useState<"calendar" | "list">("calendar");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  const fetchAppointments = useCallback(() => {
+    fetch("/api/appointments").then((r) => r.json()).then(setAppointments);
+  }, []);
+
+  useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
+
+  const handleDropAppointment = async (appointmentId: string, newDate: Date) => {
+    const apt = appointments.find((a) => a.id === appointmentId);
+    if (!apt) return;
+
+    const oldStart = new Date(apt.start_time);
+    const oldEnd = new Date(apt.end_time);
+    const durationMs = oldEnd.getTime() - oldStart.getTime();
+
+    const newStart = new Date(newDate);
+    newStart.setHours(oldStart.getHours(), oldStart.getMinutes(), 0, 0);
+    const newEnd = new Date(newStart.getTime() + durationMs);
+
+    const res = await fetch("/api/appointments", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: appointmentId,
+        status: "confirmed",
+        start_time: newStart.toISOString(),
+        end_time: newEnd.toISOString(),
+      }),
+    });
+
+    if (res.ok) {
+      setAppointments((prev) =>
+        prev.map((a) =>
+          a.id === appointmentId
+            ? { ...a, start_time: newStart.toISOString(), end_time: newEnd.toISOString(), status: "confirmed" }
+            : a
+        )
+      );
+    }
+  };
 
   const selectedDayAppointments = selectedDate ? getDayAppointments(appointments, selectedDate) : [];
 
@@ -150,6 +229,7 @@ export default function AppointmentsPage() {
               appointments={appointments}
               onSelectDay={setSelectedDate}
               selectedDate={selectedDate}
+              onDropAppointment={handleDropAppointment}
             />
           </div>
           <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
