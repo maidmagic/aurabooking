@@ -12,6 +12,9 @@ import { formatLocalTime } from "@/lib/local-time";
 
 const MAX_TURNS = 3;
 
+const MAIN_MODEL = process.env.OPENROUTER_MAIN_MODEL || "mistralai/mistral-7b-instruct:free";
+const BACKUP_MODEL = process.env.OPENROUTER_BACKUP_MODEL || "google/gemma-2-9b-it:free";
+
 function getOpenAI() {
   return new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
@@ -262,22 +265,34 @@ export async function processMessage(
     let response;
     try {
       response = await withRetry(() => openai.chat.completions.create({
-        model: "mistralai/mistral-7b-instruct:free",
+        model: MAIN_MODEL,
         messages: chatMessages,
         tools,
         tool_choice: "auto",
         max_tokens: 512,
       }, { signal }), {
-        maxRetries: 2,
+        maxRetries: 1,
         baseDelayMs: 1000,
         onRetry: (attempt, error) => {
-          console.warn(`OpenAI retry ${attempt}:`, error);
+          console.warn(`OpenAI retry ${attempt} (${MAIN_MODEL}):`, error);
         },
       });
       await recordSuccess("openai");
     } catch (e) {
-      await recordFailure("openai");
-      throw e;
+      console.warn(`Main model failed, falling back to ${BACKUP_MODEL}:`, e);
+      try {
+        response = await openai.chat.completions.create({
+          model: BACKUP_MODEL,
+          messages: chatMessages,
+          tools,
+          tool_choice: "auto",
+          max_tokens: 512,
+        }, { signal });
+        await recordSuccess("openai");
+      } catch (e2) {
+        await recordFailure("openai");
+        throw e2;
+      }
     }
 
     const choice = response.choices[0];
