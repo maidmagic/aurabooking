@@ -74,6 +74,20 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "request_human_handoff",
+      description: "Call this when the customer is frustrated, angry, asks to speak to a human, or asks a question you cannot answer. This pauses the AI and alerts the business owner.",
+      parameters: {
+        type: "object",
+        properties: {
+          reason: { type: "string", description: "Why the handoff is needed (e.g. customer frustrated, complex question, out of scope)" },
+        },
+        required: ["reason"],
+      },
+    },
+  },
 ];
 
 const SYSTEM_PREFIX = `You are an AI receptionist for a business. You have access to their services catalog and business hours only.
@@ -91,6 +105,13 @@ STRICT RULES:
 - NEVER promise appointment availability you haven't confirmed via check_availability
 - If unsure about anything, politely say "Let me transfer you to a team member"
 - If you cannot determine the customer's intent with high confidence, say "Let me transfer you to a team member" — do not guess
+
+HANDOFF RULES:
+- If the customer is frustrated, angry, or explicitly says they want to speak to a human, call request_human_handoff immediately
+- If the customer asks a question clearly outside your scope (legal advice, medical diagnosis, insurance billing codes, etc.), call request_human_handoff
+- If you detect the customer is unhappy with AI or repeating the same question 2+ times, call request_human_handoff
+- When you call request_human_handoff, tell the customer: "Let me connect you with someone who can help right away."
+- Do NOT keep trying to help after calling request_human_handoff — the handoff is final for this turn
 
 DEPOSIT RULES:
 - Some services require a deposit to confirm the booking
@@ -557,9 +578,46 @@ export async function processMessage(
               }),
             });
           }
+        } else if (fn.name === "request_human_handoff") {
+          const args = JSON.parse(fn.arguments);
+
+          const { data: meta } = await admin
+            .from("conversations")
+            .select("metadata")
+            .eq("id", conversationId)
+            .single();
+          const merged = { ...(meta?.metadata as Record<string, any> ?? {}), needs_human: true, flagged_by: "sentiment", handoff_reason: args.reason };
+          await admin
+            .from("conversations")
+            .update({ ai_active: false, metadata: merged })
+            .eq("id", conversationId);
+
+          if (business?.phone) {
+            try {
+              const { sendSMS } = await import("@/lib/sms/send");
+              await sendSMS({
+                to: business.phone,
+                body: `[AuraBooking] Customer needs help: "${args.reason}". Open inbox: ${process.env.NEXT_PUBLIC_APP_URL || "https://aurabooking.vercel.app"}/inbox`,
+                type: "RESCUE",
+              });
+            } catch {}
+          }
+
+          emitEvent(userId, "conversation.handoff", {
+            conversation_id: conversationId,
+            reason: args.reason,
+            customer_phone: conversation.customer_phone,
+          });
+
+          chatMessages.push(choice.message);
+          chatMessages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: JSON.stringify({ success: true, reason: args.reason }),
+          });
+          continue;
         }
       }
-      continue;
     }
 
     // Ambiguity threshold: detect low-confidence responses

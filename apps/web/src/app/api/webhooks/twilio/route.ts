@@ -359,6 +359,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ conversation_id: conversation!.id, queued: true });
   }
 
+  // ── Check if AI is active for this conversation ──
+  if (conversation && !conversation.ai_active) {
+    // AI is paused — do not process; notify owner if a new message arrives
+    const { sendSMS } = await import("@/lib/sms/send");
+    const fallbackMsg = userProfile?.phone
+      ? `We've received your message. A team member will respond shortly. For urgent needs, please call ${userProfile.phone}.`
+      : "We've received your message. A team member will respond shortly.";
+    await admin.from("messages").insert({
+      conversation_id: conversation!.id,
+      role: "ai",
+      content: fallbackMsg,
+      msg_type: "text",
+    });
+    await sendSMS({ to: from, body: fallbackMsg, type: "RESCUE" });
+    await releaseConversationLock(conversation!.id);
+    return NextResponse.json({ conversation_id: conversation!.id, ai_paused: true });
+  }
+
   // ── Trigger AI pipeline with timeout ──
   const { processMessage } = await import("@/lib/openai/pipeline");
 

@@ -155,10 +155,15 @@ export default function PortalInbox() {
                   {conv.last_message || "No messages yet"}
                 </p>
                 <div className="mt-1 flex items-center gap-2">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-400" />
+                  <span className={`inline-block h-1.5 w-1.5 rounded-full ${conv.metadata?.needs_human ? "bg-red-500" : "bg-green-400"}`} />
                   <span className="text-[10px] uppercase tracking-wider text-gray-300">
                     {conv.channel === "sms" ? "SMS" : conv.channel}
                   </span>
+                  {conv.metadata?.needs_human && (
+                    <span className="rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] text-red-600">
+                      Needs Help
+                    </span>
+                  )}
                   {conv.status === "booked" && (
                     <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-600">
                       Booked

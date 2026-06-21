@@ -10,6 +10,7 @@ export async function GET() {
   return NextResponse.json({
     onboarding_step: meta.onboarding_step ?? "pending",
     human_in_the_loop: meta.human_in_the_loop ?? true,
+    stripe_connected: meta.stripe_connected ?? false,
     email: user.email,
   });
 }

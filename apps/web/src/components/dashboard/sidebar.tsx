@@ -17,17 +17,43 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const [user, setUser] = useState<{ email?: string; name?: string }>({});
+  const [needsHumanCount, setNeedsHumanCount] = useState(0);
 
   useEffect(() => {
     const supabase = createClient();
+    let userId: string | undefined;
     supabase.auth.getUser().then(({ data }) => {
       const meta = data.user?.user_metadata;
+      userId = data.user?.id;
       setUser({
         email: data.user?.email,
         name: meta?.full_name || meta?.name || data.user?.email,
       });
+      if (userId) countNeedsHuman(supabase, userId);
     });
+
+    // Subscribe to needs_human changes
+    const channel = supabase.channel("sidebar-needs-human");
+    channel.on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table: "conversations",
+      filter: `user_id=eq.${userId || "none"}`,
+    }, () => {
+      if (userId) countNeedsHuman(supabase, userId);
+    });
+    channel.subscribe();
   }, []);
+
+  async function countNeedsHuman(supabase: any, uid: string) {
+    const { count } = await supabase
+      .from("conversations")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", uid)
+      .eq("ai_active", false)
+      .not("metadata->>needs_human", "is", null);
+    if (count !== null) setNeedsHumanCount(count);
+  }
 
   const initials = (user.name ?? "U")
     .split(" ")
@@ -62,6 +88,11 @@ export function Sidebar() {
                   <span className="text-base">{item.icon}</span>
                   {item.label}
                 </div>
+                {item.href === "/inbox" && needsHumanCount > 0 && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                    {needsHumanCount}
+                  </span>
+                )}
               </Link>
             );
           })}
