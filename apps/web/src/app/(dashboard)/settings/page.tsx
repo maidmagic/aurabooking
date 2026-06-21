@@ -1,8 +1,14 @@
-import { CreditCard, Users, MapPin, Bell, Zap, Monitor, Star } from "lucide-react";
+import { CreditCard, Users, MapPin, Bell, Zap, Monitor, Star, Building2 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const SETTINGS_LINKS = [
+  {
+    href: "/settings/business-profile",
+    icon: Building2,
+    title: "Business Profile",
+    description: "Business info, policies, and FAQs the AI uses to respond accurately.",
+  },
   {
     href: "/settings/connections",
     icon: Zap,

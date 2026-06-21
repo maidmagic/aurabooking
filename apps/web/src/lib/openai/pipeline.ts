@@ -149,13 +149,15 @@ export async function processMessage(
 ): Promise<string> {
   const admin = createAdminClient();
 
-  const [convResult, settingsResult] = await Promise.all([
+  const [convResult, settingsResult, userResult] = await Promise.all([
     admin.from("conversations").select("*").eq("id", conversationId).single(),
     admin.from("ai_settings").select("*").eq("user_id", userId).single(),
+    admin.from("users").select("company_name, phone, business_description, cancellation_policy, ai_greeting, faqs").eq("id", userId).single(),
   ]);
 
   const conversation = convResult.data;
   const settings = settingsResult.data;
+  const business = userResult.data as { company_name?: string; phone?: string; business_description?: string; cancellation_policy?: string; ai_greeting?: string; faqs?: { q: string; a: string }[] } | null;
 
   const { count: existingApptCount } = await admin
     .from("appointments")
@@ -204,6 +206,21 @@ export async function processMessage(
     `\n\nService order priority (lowest number = book first): if a customer requests multiple services, always book them in sequence_order ascending order.`,
     `\n\nLANGUAGE: Always respond in whatever language the customer is writing in. If they write in Spanish, reply in Spanish. If they write in French, reply in French. Never ask about language preference — just match their language automatically.`,
   ];
+
+  // Inject business profile context
+  if (business?.company_name) systemParts.push(`\n\nBusiness name: ${business.company_name}`);
+  if (business?.phone) systemParts.push(`\nBusiness phone: ${business.phone}`);
+  if (business?.business_description) systemParts.push(`\n\nAbout the business: ${business.business_description}`);
+  if (business?.cancellation_policy) systemParts.push(`\n\nCancellation policy: ${business.cancellation_policy}`);
+  if (business?.ai_greeting) systemParts.push(`\n\nGreeting message: ${business.ai_greeting}`);
+  if (business?.faqs && business.faqs.length > 0) {
+    const faqText = business.faqs.map((f) => `Q: ${f.q}\nA: ${f.a}`).join("\n\n");
+    systemParts.push(`\n\nFrequently asked questions:\n${faqText}`);
+  }
+
+  // Inject custom AI persona (FIX: was loaded but never used)
+  const aiPersona = (settings as any)?.ai_persona;
+  if (aiPersona) systemParts.push(`\n\n${aiPersona}`);
 
   if (existingApptCount === 0) {
     systemParts.push(`\n\n[Context: This is a new customer. You MUST collect their date of birth BEFORE creating a booking or generating a payment link.]`);
