@@ -121,18 +121,20 @@ DEPOSIT RULES:
 - If the customer does not complete the deposit, the slot will be released after 10 minutes
 - If the customer returns to chat after the deposit expired, you can offer to re-book`;
 
-const ENCRYPTION_KEY = process.env.CRON_SECRET?.slice(0, 32).padEnd(32, "x") || (() => {
+function getEncryptionKey(): string {
+  const key = process.env.CRON_SECRET?.slice(0, 32).padEnd(32, "x");
+  if (key) return key;
   if (process.env.NODE_ENV === "production") {
     throw new Error("CRON_SECRET must be set in production — used as encryption key for PMS credentials");
   }
   return "dev-insecure-key-not-for-prod";
-})();
+}
 
 function decrypt(encrypted: string): string {
   try {
     const [ivHex, encText] = encrypted.split(":");
     const iv = Buffer.from(ivHex, "hex");
-    const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(ENCRYPTION_KEY), iv);
+    const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(getEncryptionKey()), iv);
     let decrypted = decipher.update(encText, "hex", "utf8");
     decrypted += decipher.final("utf8");
     return decrypted;
